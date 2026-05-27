@@ -6,10 +6,10 @@
 const SHEETS_CONFIG = {
     // از فایل JSON که دانلود کردی:
     client_email: "aminshop-bot@aminshop-497507.iam.gserviceaccount.com",
-    private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDOlXkVYv7FRLYp\n9baCK0o0KSkAeNOuA5ZPFBwNU/tUrFn3mo1Q+JHiDOPmeTBDXnpLd9kToYbuqN6i\nDeXL/Y9g6htmCf5ABsux+OYzEWB6SWVVrRDVlYFVeUNPGMmXo1peGZm946bCteOL\n30m2B7h8q1/woDdciViuYttXte/xs8IGqTPGvfP8R3fz8cpwMMTxtm0RgXfaCFhZ\nyPC5tIrGJSzmLCmHudDUN34Sy6zJ21ziS+7x6v1zFBmi9ltr3LwkQfPqOOSHbYCe\n6/2DMUhMCrxWrGA8eGDCLXnlYlKEKuJIzcMVDOIBtCff8firPHA3FMMyXvxxREHL\nEMkb4xhpAgMBAAECggEADSNkd/+7xEACddiyqsSmC3syqF0G2WJRBOZ6gj59FX2A\nm0axBh1I6d93/whmEWLI1FPi8mSreDI1Nok7vCV8IOXCqFKqYNgNzFvQCB9qy1wv\nnatMDslbWFxF85nX+FTjQmjOZk08JdX7isHAplsHWKZti5gk7TWu9ihDWuivQefX\ncHVYEMPX/UhceJAA+jCPXbVaSZ2gA2SS27Ux9sx6la9721B5ismD6HvPKkhTvVcn\nPASmNScZ4uI8EqDwn5hcoURXk2ZG1t3Nh+rxnRMix9XWRkk2SnYW1T8gBUaa0YB9\nRQEbw+fGxu9uzpWV7kfwUAC479Yuzcwj8UalFSFrIQKBgQD4bmJqlLE73C5ZuJlN\nLurOzWL5NZ6a+WydiWH8AUdZpjduNoSt0yS946rBQm7lBoPUXZUGH8NZiM4AOLMb\nJMivJSr2BUnnzzlrLyXstfhjC+jhNIkd8Tclot9HooVR71nol1d70hjjA08/P612\nlome9Vot/pORhJl/GuQIwXXqkwKBgQDU4LRT4D5M8GoV0mkZ3W6mJ/eRZ3BGdTWi\nOoiC+GY6U+LXFRmsJmQEkT4kHgdnmWX+QC0w8Mjdxia3Vc8W+GZXF5kmsXjsME1d\nUMnnCOB1h1eH1v2iYB1ILyeL6QdA8XsP9V6lS5SBxn0fx8xWmnrjcNYKmosh9VSq\nR1sKUS7CkwKBgCxPO9x4otfjYJz+ENG0YYr7FQEP8DcB7751Z3WUIM67l71fmfCK\n7U21Epqfp7nPnKm++zp5ZdVNUji15DQeLnEWtv/kV5cx3bLhWOlMV34K/MFWJnKh\nuE1NLHfRY+gGQcn7XE4oXen3iCXmzKCPHwKsDiaP9nAI73u9JxjssIRjAoGAAyGb\nBXDS+ca/iLqjmSHMstz7o0PmPuMSeuRphaOpvUnmmEtTKVkXN4n7ZASdD0UOXwMK\npyGjkr+Laj704N2eg8FxG0SZBsBfIvRBRAi5ZIEtJG5hJLZNN/aZmlE/LhFfQgjV\n75CBCrekt4b01oFHNXk/bMCBM2qsaCTMjgZLrckCgYBmx+N5Q5Jn6duNii38iQPc\nwuFi5RVmwuo8cstXQeQeAZ03R76dtcyLHbkbF0o4b2N80nD2mETvvqRksNJz8as9\nVD3OpWT7tR1Ke3Egsk8y7sPu6Nwb6STiwuq+7M/2X/yndRFtEX4HjJrGV4ezjLKY\nWLdcd3qkWyvt/73MqG1s3g==\n-----END PRIVATE KEY-----\n",
+    private_key: "",
 
     // ID شیت گوگل (از آدرس مرورگر):
-    spreadsheet_id: "1bLANucgiYAlQWfzwoKys5Cq9PDBYXqjuZfHK0FyoBwU",
+    spreadsheet_id: "",
 };
 
 // نام شیت‌ها
