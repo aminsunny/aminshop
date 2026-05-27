@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#0f172a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>ویپ شاپ امین</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+    --bg:        #0f172a;
+    --surface:   #1e293b;
+    --surface2:  #273548;
+    --border:    #334155;
+    --accent:    #6366f1;
+    --accent2:   #818cf8;
+    --green:     #34d399;
+    --red:       #f87171;
+    --yellow:    #fbbf24;
+    --text:      #f1f5f9;
+    --muted:     #94a3b8;
+    --radius:    12px;
+    --nav-h:     64px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    padding-bottom: calc(var(--nav-h) + 12px);
+    font-size: 14px;
+}
+
+/* ===== Loading ===== */
+#loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,23,42,0.85); backdrop-filter: blur(4px);
+    z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+.spinner {
+    width: 44px; height: 44px; border: 4px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Toast ===== */
+.toast {
+    position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2); color: var(--text);
+    padding: 10px 20px; border-radius: 24px; font-size: 13px;
+    opacity: 0; transition: all .3s; z-index: 999; white-space: nowrap;
+    border: 1px solid var(--border); pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--red); color: var(--red); }
+.toast.success { border-color: var(--green); color: var(--green); }
+
+/* ===== Header ===== */
+header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+}
+.logo { font-size: 16px; font-weight: 700; color: var(--accent2); }
+.today-date { font-size: 12px; color: var(--muted); }
+
+/* ===== Bottom Nav ===== */
+nav {
+    position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h);
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+}
+.nav-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; color: var(--muted);
+    font-family: inherit; font-size: 10px; cursor: pointer;
+    transition: color .2s; padding: 6px 2px;
+}
+.nav-btn .icon { font-size: 20px; line-height: 1; }
+.nav-btn.active { color: var(--accent2); }
+.nav-btn.active .icon { filter: drop-shadow(0 0 6px var(--accent)); }
+
+/* ===== Pages ===== */
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+
+/* ===== Cards ===== */
+.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+}
+.card-title {
+    font-size: 13px; font-weight: 600; color: var(--muted);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+
+/* ===== Forms ===== */
+select, input[type="text"], input[type="number"], input[type="password"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 10px 12px;
+    font-family: inherit; font-size: 14px; margin-bottom: 8px;
+    outline: none; transition: border .2s;
+}
+select:focus, input:focus { border-color: var(--accent); }
+label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block; }
+
+/* ===== Buttons ===== */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 18px; border-radius: 10px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s; width: 100%; margin-bottom: 8px;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { background: #4f46e5; }
+.btn-danger  { background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+.btn-success { background: rgba(52,211,153,.15); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+.btn-outline { background: transparent; color: var(--accent2); border: 1px solid var(--border); }
+.btn-sm { padding: 7px 12px; font-size: 12px; width: auto; margin-bottom: 0; }
+.icon-btn { background: none; border: none; cursor: pointer; padding: 4px; font-size: 16px; }
+.icon-btn.del { color: var(--red); opacity: .6; }
+.icon-btn.del:active { opacity: 1; }
+
+/* ===== Badges ===== */
+.badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+}
+.badge.green { background: rgba(52,211,153,.15); color: var(--green); }
+.badge.red   { background: rgba(248,113,113,.15); color: var(--red); }
+.badge.yellow{ background: rgba(251,191,36,.15);  color: var(--yellow); }
+
+/* ===== Radio ===== */
+.radio-group { display: flex; gap: 8px; margin-bottom: 10px; }
+.radio-option { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.radio-option input { width: auto; margin: 0; cursor: pointer; accent-color: var(--accent); }
+
+/* ===== Tables ===== */
+.table-wrap { overflow-x: auto; margin: -4px -4px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 360px; }
+th {
+    background: var(--bg); color: var(--muted); font-weight: 600;
+    padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+}
+td { padding: 9px 6px; text-align: center; border-bottom: 1px solid rgba(51,65,85,.5); }
+tr:last-child td { border-bottom: none; }
+tr.debt-row td { color: var(--red); }
+.empty { color: var(--muted); font-size: 12px; padding: 20px; }
+
+/* ===== Summary Bar ===== */
+.summary-bar {
+    background: var(--surface2); border-radius: 8px; padding: 10px 12px;
+    font-size: 12px; color: var(--muted); margin: 8px 0;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+}
+
+/* ===== Filter Row ===== */
+.filter-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; flex-wrap: wrap; }
+.filter-row > * { flex: 1; min-width: 120px; }
+.filter-row select, .filter-row input { margin-bottom: 0; }
+
+/* ===== Section label ===== */
+.section-label {
+    font-size: 11px; font-weight: 700; color: var(--red);
+    letter-spacing: .05em; text-transform: uppercase;
+    margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
+}
+.section-label::before { content: ""; flex: 1; height: 1px; background: rgba(248,113,113,.2); }
+
+/* ===== Modals ===== */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+    z-index: 200; align-items: flex-end; justify-content: center;
+}
+.modal-overlay[style*="flex"] { display: flex !important; }
+.modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 20px 20px 32px; width: 100%; max-width: 480px;
+    max-height: 90dvh; overflow-y: auto;
+    animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+.modal-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.modal-row:last-child { border: none; }
+.modal-row span:first-child { color: var(--muted); }
+.modal-row span:last-child { font-weight: 600; }
+
+/* ===== Detail ===== */
+.detail-info { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+.detail-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.detail-item .muted { color: var(--muted); font-size: 11px; }
+.red { color: var(--red); } .green { color: var(--green); } .muted { color: var(--muted); }
+
+/* ===== Employee chips ===== */
+.emp-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.emp-chip {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px 4px 6px; font-size: 12px;
+}
+.emp-chip button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+
+/* ===== Checkbox ===== */
+.check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0; }
+.check-row input[type="checkbox"] { width: auto; accent-color: var(--accent); cursor: pointer; }
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <span style="color:var(--muted);font-size:13px">در حال بارگذاری...</span>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Header -->
+<header>
+    <div class="logo">🏪 ویپ شاپ امین</div>
+    <div class="today-date" id="header-date"></div>
+</header>
+
+<!-- ════════════════════════════════════
+     صفحه ۱ — ثبت حضور
+════════════════════════════════════ -->
+<div class="page active" id="page-attendance">
+
+    <div class="card">
+        <div class="card-title">🕒 ثبت ورود هوشمند</div>
+        <label>کارمند</label>
+        <select id="att-emp"><option value="">انتخاب کارمند...</option></select>
+        <button class="btn btn-primary" onclick="registerAttendance()">ثبت ورود</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🚫 ثبت غیبت</div>
+        <label>کارمند</label>
+        <select id="att-emp-abs"><option value="">انتخاب کارمند...</option></select>
+        <label>شیفت</label>
+        <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="abs-shift" value="صبح" checked/> صبح</label>
+            <label class="radio-option"><input type="radio" name="abs-shift" value="عصر"/> عصر</label>
+        </div>
+        <label>توضیح</label>
+        <input type="text" id="abs-desc" placeholder="دلیل غیبت (اختیاری)"/>
+        <button class="btn btn-danger" onclick="registerAbsenceAlt()">ثبت غیبت</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📊 گزارش حضور</div>
+        <div class="filter-row">
+            <div>
+                <label>کارمند</label>
+                <select id="att-filter" onchange="renderAttReport()"><option value="همه">همه</option></select>
+            </div>
+            <div>
+                <label>از تاریخ</label>
+                <input type="text" id="att-from" placeholder="۱۴۰۳/۰۱/۰۱" oninput="renderAttReport()"/>
+            </div>
+            <div>
+                <label>تا تاریخ</label>
+                <input type="text" id="att-to" placeholder="۱۴۰۳/۱۲/۲۹" oninput="renderAttReport()"/>
+            </div>
+        </div>
+        <div class="summary-bar" id="att-summary">—</div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>تاریخ</th><th>نام</th><th>شیفت</th><th>ساعت</th><th>وضعیت</th><th></th></tr></thead>
+                <tbody id="att-tbody"><tr><td colspan="6" class="empty">در حال بارگذاری...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     صفحه ۲ — امور مالی
+════════════════════════════════════ -->
+<div class="page" id="page-finance">
+
+    <div class="card">
+        <div class="card-title">💸 ثبت مساعده جدید</div>
+        <label>کارمند</label>
+        <select id="fin-emp"><option value="">انتخاب کارمند...</option></select>
+        <label>مبلغ (تومان)</label>
+        <input type="text" id="fin-amount" placeholder="مبلغ را وارد کنید" oninput="formatInput(this)"/>
+        <label>توضیح</label>
+        <input type="text" id="fin-desc" placeholder="بابت..."/>
+        <button class="btn btn-primary" onclick="registerFinance()">ثبت مساعده</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📋 حساب جاری</div>
+        <div class="filter-row">
+            <div>
+                <label>فیلتر کارمند</label>
+                <select id="fin-filter" onchange="renderFinance()"><option value="همه">همه</option></select>
+            </div>
+        </div>
+        <div class="summary-bar" id="fin-summary">—</div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>تاریخ</th><th>نام</th><th>مبلغ</th><th>توضیح</th><th></th></tr></thead>
+                <tbody id="fin-active-tbody"></tbody>
+            </table>
+        </div>
+
+        <div class="section-label">🔴 بدهی‌های انتقالی</div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>تاریخ</th><th>نام</th><th>مبلغ</th><th>توضیح</th><th></th></tr></thead>
+                <tbody id="fin-debt-tbody"></tbody>
+            </table>
+        </div>
+
+        <button class="btn btn-success" style="margin-top:12px" onclick="openSettleDialog()">✅ تسویه حساب نهایی</button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     صفحه ۳ — بایگانی
+════════════════════════════════════ -->
+<div class="page" id="page-archive">
+    <div class="card">
+        <div class="card-title">🗄 بایگانی مالی</div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>تاریخ تسویه</th><th>نام</th><th>جمع کل</th><th>حقوق</th><th>وضعیت</th></tr></thead>
+                <tbody id="archive-tbody"></tbody>
+            </table>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">روی هر ردیف کلیک کنید تا جزئیات ببینید</p>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     صفحه ۴ — تنظیمات
+════════════════════════════════════ -->
+<div class="page" id="page-settings">
+
+    <div class="card">
+        <div class="card-title">👥 مدیریت کارمندان</div>
+        <label>نام کارمند جدید</label>
+        <input type="text" id="new-emp-name" placeholder="نام و نام خانوادگی"/>
+        <button class="btn btn-outline btn-sm" style="width:auto" onclick="addEmployee()">➕ افزودن</button>
+        <div class="emp-list" id="emp-chips"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">💵 حقوق پیش‌فرض کارمندان</div>
+        <label>کارمند</label>
+        <select id="admin-sal-emp" onchange="loadSalary()"><option value="">انتخاب...</option></select>
+        <label>حقوق (تومان)</label>
+        <input type="text" id="admin-sal-amount" placeholder="مبلغ حقوق" oninput="formatInput(this)"/>
+        <button class="btn btn-outline btn-sm" style="width:auto" onclick="saveSalaryAdmin()">💾 ذخیره</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">⏰ ساعت شروع شیفت‌ها</div>
+        <label>شروع شیفت صبح</label>
+        <div style="display:flex;gap:8px">
+            <input type="number" id="morning-h" min="0" max="23" placeholder="ساعت" style="flex:1"/>
+            <input type="number" id="morning-m" min="0" max="59" placeholder="دقیقه" style="flex:1"/>
+        </div>
+        <label>شروع شیفت عصر</label>
+        <div style="display:flex;gap:8px">
+            <input type="number" id="afternoon-h" min="0" max="23" placeholder="ساعت" style="flex:1"/>
+            <input type="number" id="afternoon-m" min="0" max="59" placeholder="دقیقه" style="flex:1"/>
+        </div>
+        <button class="btn btn-outline" onclick="saveAdminSettings()">✅ ذخیره تنظیمات</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🔐 امنیت</div>
+        <button class="btn btn-danger" onclick="changePassword()">🔑 تغییر رمز عبور مدیریت</button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     مودال تسویه حساب
+════════════════════════════════════ -->
+<div class="modal-overlay" id="settle-modal" onclick="if(event.target===this)closeSettle()">
+    <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">✅ تسویه حساب — <span id="settle-name"></span></div>
+        <div class="modal-row"><span>مساعده این دوره</span><span id="settle-active"></span></div>
+        <div class="modal-row"><span>🔴 بدهی انتقالی</span><span id="settle-debt"></span></div>
+        <div class="modal-row"><span>📊 جمع کل بدهی</span><span id="settle-total" style="color:var(--accent2);font-size:15px"></span></div>
+        <hr style="border-color:var(--border);margin:12px 0"/>
+        <label>💵 حقوق این دوره (تومان)</label>
+        <input type="text" id="settle-salary" placeholder="مبلغ حقوق" oninput="formatInput(this)"/>
+        <div class="check-row">
+            <input type="checkbox" id="settle-save-salary" checked/>
+            <label for="settle-save-salary" style="margin:0">به عنوان حقوق پیش‌فرض ذخیره شود</label>
+        </div>
+        <button class="btn btn-success" id="settle-confirm">✅ تأیید تسویه</button>
+        <button class="btn btn-outline" onclick="closeSettle()">انصراف</button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     مودال جزئیات بایگانی
+════════════════════════════════════ -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeDetail()">
+    <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title" id="detail-title"></div>
+        <div id="detail-body"></div>
+        <button class="btn btn-outline" style="margin-top:12px" onclick="closeDetail()">بستن</button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     Bottom Navigation
+════════════════════════════════════ -->
+<nav>
+    <button class="nav-btn active" data-page="attendance" onclick="renderPage('attendance')">
+        <span class="icon">🕒</span>حضور
+    </button>
+    <button class="nav-btn" data-page="finance" onclick="renderPage('finance')">
+        <span class="icon">💸</span>مالی
+    </button>
+    <button class="nav-btn" data-page="archive" onclick="renderPage('archive')">
+        <span class="icon">🗄</span>بایگانی
+    </button>
+    <button class="nav-btn" data-page="settings" onclick="renderPage('settings');renderSettings()">
+        <span class="icon">⚙️</span>تنظیمات
+    </button>
+</nav>
+
+<script type="module" src="app.js"></script>
+<script>
+// تاریخ هدر
+document.getElementById("header-date").textContent = new Date().toLocaleDateString('fa-IR');
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// تابع ثبت غیبت با select جداگانه
+window.registerAbsenceAlt = async function() {
+    const name = document.getElementById("att-emp-abs").value;
+    if (!name) { window.showToast && showToast("کارمند انتخاب کنید", "error"); return; }
+    // sync با att-emp و صدا زدن تابع اصلی
+    document.getElementById("att-emp").value = name;
+    window.registerAbsence && registerAbsence();
+};
+
+// بارگذاری حقوق در تنظیمات
+window.loadSalary = function() {
+    const name = document.getElementById("admin-sal-emp").value;
+    if (!name) return;
+    // از STATE استفاده می‌شه در app.js
+    const el = document.getElementById("admin-sal-amount");
+    const sal = window._getState?.()?.salaries?.[name];
+    if (sal) el.value = sal.toLocaleString();
+    else el.value = "";
+};
+
+// رندر کارمندان در تنظیمات
+window.renderSettings = function() {
+    const chips = document.getElementById("emp-chips");
+    if (!chips) return;
+    // از STATE گرفته میشه
+    setTimeout(() => {
+        const emps = document.getElementById("admin-sal-emp");
+        if (emps && emps.options.length <= 1) {
+            // sync با سایر select ها
+        }
+    }, 100);
+};
+</script>
+</body>
+</html>
