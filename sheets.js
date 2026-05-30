@@ -71,15 +71,38 @@ async function saveAll(state) {
 }
 
 // ================================================================
-// توابع همگام با app.js جهت جلوگیری از تداخل رفتار برنامه
+// توابع جداگانه برای ذخیره بخشی از داده‌ها
 // ================================================================
-async function saveEmployees(employees) { return saveAll({ ...window.appState, employees }); }
-async function saveLogs(logs) { return saveAll({ ...window.appState, logs }); }
-async function saveActive(active) { return saveAll({ ...window.appState, active }); }
-async function saveDebts(debts) { return saveAll({ ...window.appState, debts }); }
-async function saveArchive(archive) { return saveAll({ ...window.appState, archive }); }
-async function saveSalaries(salaries) { return saveAll({ ...window.appState, salaries }); }
-async function saveConfig(config) { return saveAll({ ...window.appState, config }); }
+async function saveEmployees(employees) {
+    await _saveSheets({ employees: employees.map(e => [e]) });
+}
+async function saveLogs(logs) {
+    await _saveSheets({ attendance_logs: logs.map(l => [l.id||"", l.date||"", l.time||"", l.name||"", l.minutes||0, l.shift||"", l.type||""]) });
+}
+async function saveActive(active) {
+    await _saveSheets({ finance_active: active.map(a => [a.id||"", a.date||"", a.name||"", a.amount||0, a.desc||""]) });
+}
+async function saveDebts(debts) {
+    await _saveSheets({ finance_debts: debts.map(d => [d.id||"", d.date||"", d.name||"", d.amount||0, d.desc||""]) });
+}
+async function saveArchive(archive) {
+    await _saveSheets({ finance_archive: archive.map(a => [JSON.stringify(a)]) });
+}
+async function saveSalaries(salaries) {
+    await _saveSheets({ salaries: Object.entries(salaries).map(([k,v]) => [k, v]) });
+}
+async function saveConfig(config) {
+    await _saveSheets({ config: Object.entries(config).map(([k,v]) => [k, String(v)]) });
+}
+
+async function _saveSheets(payload) {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.status !== "success") throw new Error("خطا در ذخیره");
+}
 
 export {
     loadAllData, saveAll,
