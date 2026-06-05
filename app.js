@@ -78,8 +78,12 @@ function checkEntryPass() {
     const input = document.getElementById("login-pass-input");
     const val   = input.value;
     if (!val) return;
+    
+    // رمز ذخیره شده در Sheets یا پیش‌فرض
     const stored = STATE.config.entry_pass || btoa("1234");
-    if (btoa(val) === stored) {
+    const isCorrect = btoa(val) === stored || val === "1234" && !STATE.config.entry_pass;
+    
+    if (isCorrect) {
         hideLoginScreen();
         input.value = "";
     } else {
