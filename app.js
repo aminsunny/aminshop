@@ -175,7 +175,7 @@ async function addEmployee() {
     STATE.employees.push(name);
     STATE.employees.sort();
     showLoading(true);
-    await saveEmployees(STATE.employees);
+    await saveAll(STATE);
     showLoading(false);
     updateEmployeeLists();
     inp.value = "";
@@ -223,7 +223,7 @@ async function registerAttendance() {
     const log    = { id: uid(), date: toJalali(), time: nowTime(), name, minutes: diff, shift, type: "حضور" };
     STATE.logs.push(log);
     showLoading(true);
-    await saveLogs(STATE.logs);
+    await saveAll(STATE);
     showLoading(false);
     renderAttReport();
     const msg = diff > 0 ? `تاخیر: ${diff} دقیقه` : diff < 0 ? `${Math.abs(diff)} دقیقه زودتر` : "دقیقاً به موقع";
@@ -239,7 +239,7 @@ async function registerAbsence() {
     const log   = { id: uid(), date: toJalali(), time: "--:--", name, minutes: 0, shift, type: `غیبت: ${desc}` };
     STATE.logs.push(log);
     showLoading(true);
-    await saveLogs(STATE.logs);
+    await saveAll(STATE);
     showLoading(false);
     renderAttReport();
     document.getElementById("abs-desc").value = "";
@@ -253,7 +253,7 @@ async function deleteLog(id) {
     if (!confirm(`حذف رکورد ${log.name} — ${log.date}؟`)) return;
     STATE.logs = STATE.logs.filter(l => l.id !== id);
     showLoading(true);
-    await saveLogs(STATE.logs);
+    await saveAll(STATE);
     showLoading(false);
     renderAttReport();
     showToast("رکورد حذف شد");
@@ -302,7 +302,7 @@ async function registerFinance() {
     if (!confirm(`ثبت مساعده ${amount.toLocaleString()} تومان برای ${name}؟`)) return;
     STATE.active.push({ id: uid(), date: toJalali(), name, amount, desc });
     showLoading(true);
-    await saveActive(STATE.active);
+    await saveAll(STATE);
     showLoading(false);
     document.getElementById("fin-amount").value = "";
     document.getElementById("fin-desc").value   = "";
@@ -314,7 +314,7 @@ async function deleteActive(id) {
     if (!checkAdminPass()) return;
     STATE.active = STATE.active.filter(a => a.id !== id);
     showLoading(true);
-    await saveActive(STATE.active);
+    await saveAll(STATE);
     showLoading(false);
     renderFinance();
     showToast("رکورد حذف شد");
@@ -487,7 +487,7 @@ async function saveAdminSettings() {
     STATE.config.afternoon_start = document.getElementById("afternoon-h").value;
     STATE.config.afternoon_min   = document.getElementById("afternoon-m").value;
     showLoading(true);
-    await saveConfig(STATE.config);
+    await saveAll(STATE);
     showLoading(false);
     showToast("تنظیمات ذخیره شد");
 }
@@ -500,7 +500,7 @@ async function changeEntryPassword() {
     if (newPass !== confirm2) return showToast("رمزها یکسان نیستند", "error");
     STATE.config.entry_pass = btoa(newPass);
     showLoading(true);
-    await saveConfig(STATE.config);
+    await saveAll(STATE);
     showLoading(false);
     showToast("رمز ورود تغییر یافت");
 }
@@ -513,7 +513,7 @@ async function changeAdminPassword() {
     if (newPass !== confirm2) return showToast("رمزها یکسان نیستند", "error");
     STATE.config.admin_pass = btoa(newPass);
     showLoading(true);
-    await saveConfig(STATE.config);
+    await saveAll(STATE);
     showLoading(false);
     showToast("رمز مدیریت تغییر یافت");
 }
@@ -525,7 +525,7 @@ async function saveSalaryAdmin() {
     if (!amount) return showToast("مبلغ را وارد کنید", "error");
     STATE.salaries[name] = amount;
     showLoading(true);
-    await saveSalaries(STATE.salaries);
+    await saveAll(STATE);
     showLoading(false);
     showToast(`حقوق ${name} ذخیره شد`);
 }
