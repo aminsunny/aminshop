@@ -34,9 +34,9 @@ function toJalali(date = new Date()) {
     const jm=(jp===undefined?1:jp+1);
     return `${jy}/${String(jm).padStart(2,'0')}/${String(jd).padStart(2,'0')}`;
 }
+function uid(){return "m"+crypto.randomUUID().replace(/-/g,"").slice(0,15);}
 function nowTime(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;}
 function nowHour(){return new Date().getHours();}
-function uid(){return crypto.randomUUID().slice(0,8);}
 function formatNum(n){return parseInt(n||0).toLocaleString();}
 
 // ================================================================
