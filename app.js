@@ -86,8 +86,28 @@ async function init(){
         STATE.active=data.active||[];
         STATE.debts=data.debts||[];
         STATE.config={...STATE.config,...data.config};
+
+        // اضافه کردن رکوردهای pending که هنوز تأیید نشدن
+        // تا کاربر بعد از refresh هم اونها رو ببینه
+        const localLogs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
+        const localActive = JSON.parse(localStorage.getItem("localActive") || "[]");
+
+        const existIds = new Set(STATE.logs.map(l=>l.id));
+        localLogs.forEach(l=>{ if(!existIds.has(l.id)) STATE.logs.push(l); });
+        // پاک کردن رکوردهایی که توی Sheets تأیید شدن
+        const stillLocal = localLogs.filter(l=>!existIds.has(l.id));
+        localStorage.setItem("localLogs", JSON.stringify(stillLocal));
+
+        const existActIds = new Set(STATE.active.map(a=>a.id));
+        localActive.forEach(a=>{ if(!existActIds.has(a.id)) STATE.active.push(a); });
+        const stillLocalAct = localActive.filter(a=>!existActIds.has(a.id));
+        localStorage.setItem("localActive", JSON.stringify(stillLocalAct));
+
         STATE.loaded=true;
     } catch(e){
+        // آفلاین — از localStorage بخون
+        STATE.logs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
+        STATE.active = JSON.parse(localStorage.getItem("localActive") || "[]");
         showToast("آفلاین — از حافظه محلی استفاده می‌شود","error");
     }
     showLoading(false);
@@ -188,6 +208,8 @@ async function registerAttendance(){
     const diff=Math.floor((now-target)/60000);
     const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
     STATE.logs.push(log);
+    // ذخیره محلی برای نمایش بعد از refresh
+    localStorage.setItem("localLogs", JSON.stringify(STATE.logs));
     renderAttReport();
     await sendRecord("logs", log);
     const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
@@ -204,6 +226,7 @@ async function registerAbsence(){
     const desc=document.getElementById("abs-desc").value.trim();
     const log={id:uid(),date:toJalali(),time:"--:--",name,minutes:0,shift,type:`غیبت: ${desc}`};
     STATE.logs.push(log);
+    localStorage.setItem("localLogs", JSON.stringify(STATE.logs));
     renderAttReport();
     document.getElementById("abs-desc").value="";
     await sendRecord("logs", log);
@@ -248,6 +271,7 @@ async function registerFinance(){
     if(!confirm(`ثبت مساعده ${formatNum(amount)} تومان برای ${name}؟`)) return;
     const rec={id:uid(),date:toJalali(),name,amount,desc};
     STATE.active.push(rec);
+    localStorage.setItem("localActive", JSON.stringify(STATE.active));
     document.getElementById("fin-amount").value="";
     document.getElementById("fin-desc").value="";
     renderFinance();
