@@ -1,8 +1,7 @@
 // ================================================================
 // app.js — اپ موبایل ویپ شاپ امین
-// ثبت ورود، غیبت، مساعده و تغییر رمز ورود
 // ================================================================
-import { loadAllData, saveLogs, saveActive, saveConfig } from "./sheets.js";
+import { loadAllData, addToPending, saveConfig } from "./sheets.js";
 
 let STATE = {
     employees: [],
@@ -11,6 +10,8 @@ let STATE = {
     debts: [],
     config: { entry_pass: btoa("1234") },
     loaded: false,
+    // صف آفلاین
+    offlineQueue: JSON.parse(localStorage.getItem("offlineQueue") || "[]"),
 };
 
 // ================================================================
@@ -34,9 +35,9 @@ function toJalali(date = new Date()) {
     const jm=(jp===undefined?1:jp+1);
     return `${jy}/${String(jm).padStart(2,'0')}/${String(jd).padStart(2,'0')}`;
 }
-function uid(){return "m"+crypto.randomUUID().replace(/-/g,"").slice(0,15);}
 function nowTime(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;}
 function nowHour(){return new Date().getHours();}
+function uid(){return "m"+crypto.randomUUID().replace(/-/g,"").slice(0,15);}
 function formatNum(n){return parseInt(n||0).toLocaleString();}
 
 // ================================================================
@@ -62,6 +63,8 @@ function checkEntryPass(){
     const stored=STATE.config.entry_pass||btoa("1234");
     if(btoa(val)===stored){
         hideLogin();input.value="";
+        // بعد از ورود، صف آفلاین رو بفرست
+        flushOfflineQueue();
     } else {
         input.value="";
         input.placeholder="رمز اشتباه است";
@@ -85,7 +88,7 @@ async function init(){
         STATE.config={...STATE.config,...data.config};
         STATE.loaded=true;
     } catch(e){
-        showToast("خطا در اتصال: "+e.message,"error");
+        showToast("آفلاین — از حافظه محلی استفاده می‌شود","error");
     }
     showLoading(false);
     updateEmpSelects();
@@ -93,16 +96,53 @@ async function init(){
     renderFinance();
 }
 
+// ================================================================
+// صف آفلاین
+// ================================================================
+function saveOfflineQueue(){
+    localStorage.setItem("offlineQueue", JSON.stringify(STATE.offlineQueue));
+}
+
+async function flushOfflineQueue(){
+    if(STATE.offlineQueue.length === 0) return;
+    showToast(`⏳ ${STATE.offlineQueue.length} رکورد آفلاین در حال ارسال...`);
+    const failed = [];
+    for(const item of STATE.offlineQueue){
+        try {
+            await addToPending(item.type, item.record);
+        } catch(e) {
+            failed.push(item);
+        }
+    }
+    STATE.offlineQueue = failed;
+    saveOfflineQueue();
+    if(failed.length === 0){
+        showToast("✅ همه رکوردهای آفلاین ارسال شدند");
+    } else {
+        showToast(`⚠️ ${failed.length} رکورد هنوز ارسال نشد`,"error");
+    }
+}
+
+async function sendRecord(type, record){
+    try {
+        await addToPending(type, record);
+    } catch(e){
+        // آفلاین — به صف اضافه کن
+        STATE.offlineQueue.push({type, record});
+        saveOfflineQueue();
+        showToast("آفلاین — رکورد در صف ذخیره شد","error");
+    }
+}
+
+// ================================================================
+// UI helpers
+// ================================================================
 function showLoading(show){document.getElementById("loading-overlay").style.display=show?"flex":"none";}
 function showToast(msg,type="success"){
     const t=document.getElementById("toast");
     t.textContent=msg;t.className=`toast show ${type}`;
     setTimeout(()=>t.className="toast",3000);
 }
-
-// ================================================================
-// ناوبری
-// ================================================================
 function renderPage(page){
     document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
@@ -111,7 +151,6 @@ function renderPage(page){
     if(page==="attendance") renderAttReport();
     if(page==="finance") renderFinance();
 }
-
 function updateEmpSelects(){
     const emps=STATE.employees;
     ["att-emp","att-emp-abs","fin-emp","att-filter","fin-filter"].forEach(id=>{
@@ -149,10 +188,8 @@ async function registerAttendance(){
     const diff=Math.floor((now-target)/60000);
     const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
     STATE.logs.push(log);
-    showLoading(true);
-    await saveLogs(STATE.logs);
-    showLoading(false);
     renderAttReport();
+    await sendRecord("logs", log);
     const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
     showToast(`ورود ${name} ثبت شد — ${msg}`);
 }
@@ -167,11 +204,9 @@ async function registerAbsence(){
     const desc=document.getElementById("abs-desc").value.trim();
     const log={id:uid(),date:toJalali(),time:"--:--",name,minutes:0,shift,type:`غیبت: ${desc}`};
     STATE.logs.push(log);
-    showLoading(true);
-    await saveLogs(STATE.logs);
-    showLoading(false);
     renderAttReport();
     document.getElementById("abs-desc").value="";
+    await sendRecord("logs", log);
     showToast(`غیبت ${name} ثبت شد`);
 }
 
@@ -211,13 +246,12 @@ async function registerFinance(){
     if(!name) return showToast("کارمند انتخاب کنید","error");
     if(!amount) return showToast("مبلغ را وارد کنید","error");
     if(!confirm(`ثبت مساعده ${formatNum(amount)} تومان برای ${name}؟`)) return;
-    STATE.active.push({id:uid(),date:toJalali(),name,amount,desc});
-    showLoading(true);
-    await saveActive(STATE.active);
-    showLoading(false);
+    const rec={id:uid(),date:toJalali(),name,amount,desc};
+    STATE.active.push(rec);
     document.getElementById("fin-amount").value="";
     document.getElementById("fin-desc").value="";
     renderFinance();
+    await sendRecord("active", rec);
     showToast(`مساعده ${name} ثبت شد`);
 }
 
@@ -259,6 +293,17 @@ async function changeEntryPassword(){
     await saveConfig(STATE.config);
     showLoading(false);
     showToast("رمز ورود تغییر یافت");
+}
+
+// ================================================================
+// نمایش وضعیت صف آفلاین
+// ================================================================
+function renderOfflineStatus(){
+    const el=document.getElementById("offline-count");
+    if(!el) return;
+    const q=STATE.offlineQueue.length;
+    el.textContent=q>0?`⚠️ ${q} رکورد در صف آفلاین`:"";
+    el.style.color=q>0?"var(--yellow)":"";
 }
 
 // ================================================================
