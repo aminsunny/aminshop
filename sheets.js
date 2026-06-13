@@ -86,4 +86,4 @@ async function saveActive(active) {
 }
 async function saveAll(state) { }
 
-export { loadAllData, addToPending, saveConfig, saveLogs, saveActive, saveAll };
+export { loadAllData, addToPending, saveConfig, saveLogs, saveActive, saveAll, APPS_SCRIPT_URL };

@@ -1,7 +1,11 @@
 // ================================================================
 // app.js — اپ موبایل ویپ شاپ امین
 // ================================================================
-import { loadAllData, addToPending, saveConfig } from "./sheets.js";
+import { loadAllData, addToPending, saveConfig, APPS_SCRIPT_URL } from "./sheets.js";
+
+function APPS_SCRIPT_PENDING_URL(){
+    return APPS_SCRIPT_URL + "?action=pending";
+}
 
 let STATE = {
     employees: [],
@@ -88,19 +92,33 @@ async function init(){
         STATE.config={...STATE.config,...data.config};
 
         // اضافه کردن رکوردهای pending که هنوز تأیید نشدن
-        // تا کاربر بعد از refresh هم اونها رو ببینه
         const localLogs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
         const localActive = JSON.parse(localStorage.getItem("localActive") || "[]");
 
-        const existIds = new Set(STATE.logs.map(l=>l.id));
-        localLogs.forEach(l=>{ if(!existIds.has(l.id)) STATE.logs.push(l); });
-        // پاک کردن رکوردهایی که توی Sheets تأیید شدن
-        const stillLocal = localLogs.filter(l=>!existIds.has(l.id));
+        const existIds    = new Set(STATE.logs.map(l=>l.id));
+        const existActIds = new Set(STATE.active.map(a=>a.id));
+
+        // چک کن کدوم رکوردهای محلی هنوز توی pending_sync هستن
+        let pendingIds = new Set();
+        try {
+            const pendingRes = await fetch(APPS_SCRIPT_PENDING_URL());
+            const pendingJson = await pendingRes.json();
+            if (pendingJson.status === "success") {
+                (pendingJson.rows||[]).forEach(r=>{
+                    if(r[3]){
+                        try { const rec=JSON.parse(r[3]); if(rec.id) pendingIds.add(rec.id); } catch{}
+                    }
+                });
+            }
+        } catch(e){}
+
+        // فقط رکوردهایی که توی Sheets اصلی یا هنوز pending هستن نگه دار
+        localLogs.forEach(l=>{ if(!existIds.has(l.id) && pendingIds.has(l.id)) STATE.logs.push(l); });
+        const stillLocal = localLogs.filter(l=>pendingIds.has(l.id) && !existIds.has(l.id));
         localStorage.setItem("localLogs", JSON.stringify(stillLocal));
 
-        const existActIds = new Set(STATE.active.map(a=>a.id));
-        localActive.forEach(a=>{ if(!existActIds.has(a.id)) STATE.active.push(a); });
-        const stillLocalAct = localActive.filter(a=>!existActIds.has(a.id));
+        localActive.forEach(a=>{ if(!existActIds.has(a.id) && pendingIds.has(a.id)) STATE.active.push(a); });
+        const stillLocalAct = localActive.filter(a=>pendingIds.has(a.id) && !existActIds.has(a.id));
         localStorage.setItem("localActive", JSON.stringify(stillLocalAct));
 
         STATE.loaded=true;
