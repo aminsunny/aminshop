@@ -81,7 +81,10 @@ tr.debt-row td{color:var(--red);}
 
 <header id="app-header">
     <div class="logo">🏪 ویپ شاپ امین</div>
-    <div style="font-size:12px;color:var(--muted)" id="header-date"></div>
+    <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--muted)" id="header-date"></div>
+        <button onclick="refreshFromSheets()" style="background:none;border:1px solid var(--border);color:var(--accent2);border-radius:8px;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer">🔄 بروزرسانی</button>
+    </div>
 </header>
 
 <div id="app-content">
@@ -160,6 +163,11 @@ tr.debt-row td{color:var(--red);}
 
 <!-- صفحه ۳ — تنظیمات -->
 <div class="page" id="page-settings">
+    <div class="card">
+        <div class="card-title">🔄 به‌روزرسانی از سرور</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">اطلاعات را از Google Sheets دوباره بارگذاری می‌کند. رکوردهایی که از دسکتاپ حذف شده‌اند هم پاک می‌شوند.</p>
+        <button class="btn btn-primary" onclick="refreshFromServer()">🔄 به‌روزرسانی</button>
+    </div>
     <div class="card">
         <div class="card-title">🔐 تغییر رمز ورود به اپ</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">تنظیمات و مدیریت کارمندان فقط از برنامه دسکتاپ انجام میشه.</p>

@@ -323,6 +323,56 @@ function formatInput(el){
 }
 
 // ================================================================
+// به‌روزرسانی از سرور
+// ================================================================
+async function refreshFromServer(){
+    showLoading(true);
+    try {
+        const data = await loadAllData();
+        STATE.employees = data.employees || [];
+        STATE.logs      = data.logs      || [];
+        STATE.active    = data.active    || [];
+        STATE.debts     = data.debts     || [];
+        STATE.config    = { ...STATE.config, ...data.config };
+
+        // چک کن کدوم رکوردهای محلی هنوز pending هستن
+        let pendingIds = new Set();
+        try {
+            const pendingRes  = await fetch(APPS_SCRIPT_PENDING_URL());
+            const pendingJson = await pendingRes.json();
+            if (pendingJson.status === "success") {
+                (pendingJson.rows||[]).forEach(r=>{
+                    if(r[3]){
+                        try { const rec=JSON.parse(r[3]); if(rec.id) pendingIds.add(rec.id); } catch{}
+                    }
+                });
+            }
+        } catch(e){}
+
+        const existIds    = new Set(STATE.logs.map(l=>l.id));
+        const existActIds = new Set(STATE.active.map(a=>a.id));
+
+        const localLogs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
+        const localActive = JSON.parse(localStorage.getItem("localActive") || "[]");
+
+        // فقط pending های تأیید نشده رو نگه دار
+        localLogs.forEach(l=>{ if(!existIds.has(l.id) && pendingIds.has(l.id)) STATE.logs.push(l); });
+        localStorage.setItem("localLogs", JSON.stringify(localLogs.filter(l=>pendingIds.has(l.id)&&!existIds.has(l.id))));
+
+        localActive.forEach(a=>{ if(!existActIds.has(a.id) && pendingIds.has(a.id)) STATE.active.push(a); });
+        localStorage.setItem("localActive", JSON.stringify(localActive.filter(a=>pendingIds.has(a.id)&&!existActIds.has(a.id))));
+
+        updateEmpSelects();
+        renderAttReport();
+        renderFinance();
+        showToast("✅ اطلاعات به‌روز شد");
+    } catch(e){
+        showToast("خطا در اتصال به سرور","error");
+    }
+    showLoading(false);
+}
+
+// ================================================================
 // تغییر رمز ورود
 // ================================================================
 async function changeEntryPassword(){
@@ -337,9 +387,30 @@ async function changeEntryPassword(){
     showToast("رمز ورود تغییر یافت");
 }
 
-// ================================================================
-// نمایش وضعیت صف آفلاین
-// ================================================================
+async function refreshFromSheets(){
+    showLoading(true);
+    try {
+        const data=await loadAllData();
+        STATE.employees=data.employees||[];
+        STATE.logs=data.logs||[];
+        STATE.active=data.active||[];
+        STATE.debts=data.debts||[];
+        STATE.config={...STATE.config,...data.config};
+
+        // پاک کردن localStorage — چون الان مستقیم از Sheets خوندیم
+        localStorage.removeItem("localLogs");
+        localStorage.removeItem("localActive");
+
+        updateEmpSelects();
+        renderAttReport();
+        renderFinance();
+        showToast("✅ اطلاعات بروزرسانی شد");
+    } catch(e){
+        showToast("خطا در اتصال به سرور","error");
+    }
+    showLoading(false);
+}
+window.refreshFromSheets=refreshFromSheets;
 function renderOfflineStatus(){
     const el=document.getElementById("offline-count");
     if(!el) return;
@@ -360,5 +431,6 @@ window.registerFinance=registerFinance;
 window.renderFinance=renderFinance;
 window.formatInput=formatInput;
 window.changeEntryPassword=changeEntryPassword;
+window.refreshFromServer=refreshFromServer;
 
 init();
