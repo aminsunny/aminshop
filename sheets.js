@@ -18,20 +18,52 @@ async function loadAllData() {
     if (json.status !== "success") throw new Error("خطا در دریافت داده‌ها");
     const d = json.data;
 
+    function fixDate(v) {
+        if (!v) return "";
+        const s = String(v);
+        // ISO format: 1405-03-02T20:34:16.000Z → 1405/03/02
+        if (s.includes("T")) return s.split("T")[0].replace(/-/g, "/");
+        return s.replace(/-/g, "/");
+    }
+
+    function fixTime(v) {
+        if (!v) return "--:--";
+        const s = String(v);
+        // اگه ISO بود یا 1899 بود، ساعت رو از داخلش بکش
+        if (s.includes("T")) {
+            const t = s.split("T")[1] || "";
+            return t.slice(0, 5); // HH:MM
+        }
+        // اگه عدد دهدهی بود (مثل 0.375 = 9:00)
+        if (!isNaN(parseFloat(s)) && s.includes(".") && !s.includes(":")) {
+            const totalMins = Math.round(parseFloat(s) * 24 * 60);
+            const h = Math.floor(totalMins / 60) % 24;
+            const m = totalMins % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        }
+        // اگه --:-- یا HH:MM بود همونطور برگردون
+        if (s === "--:--" || s.includes(":")) return s.slice(0,5);
+        return "--:--";
+    }
+
+    function fixId(v) {
+        return String(v).split(".")[0];
+    }
+
     const employees = (d.employees || []).map(r => r[0]).filter(Boolean);
 
     const logs = (d.attendance_logs || []).map(r => ({
-        id: String(r[0]).split(".")[0], date: r[1], time: String(r[2]),
+        id: fixId(r[0]), date: fixDate(r[1]), time: fixTime(r[2]),
         name: r[3], minutes: parseInt(r[4]) || 0, shift: r[5], type: r[6]
     })).filter(r => r.name);
 
     const active = (d.finance_active || []).map(r => ({
-        id: String(r[0]).split(".")[0], date: r[1], name: r[2],
+        id: fixId(r[0]), date: fixDate(r[1]), name: r[2],
         amount: parseInt(r[3]) || 0, desc: r[4] || ""
     })).filter(r => r.name);
 
     const debts = (d.finance_debts || []).map(r => ({
-        id: String(r[0]).split(".")[0], date: r[1], name: r[2],
+        id: fixId(r[0]), date: fixDate(r[1]), name: r[2],
         amount: parseInt(r[3]) || 0, desc: r[4] || ""
     })).filter(r => r.name);
 
