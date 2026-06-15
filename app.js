@@ -90,43 +90,21 @@ async function init(){
         STATE.active=data.active||[];
         STATE.debts=data.debts||[];
         STATE.config={...STATE.config,...data.config};
-
-        // اضافه کردن رکوردهای pending که هنوز تأیید نشدن
-        const localLogs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
-        const localActive = JSON.parse(localStorage.getItem("localActive") || "[]");
-
-        const existIds    = new Set(STATE.logs.map(l=>l.id));
-        const existActIds = new Set(STATE.active.map(a=>a.id));
-
-        // چک کن کدوم رکوردهای محلی هنوز توی pending_sync هستن
-        let pendingIds = new Set();
-        try {
-            const pendingRes = await fetch(APPS_SCRIPT_PENDING_URL());
-            const pendingJson = await pendingRes.json();
-            if (pendingJson.status === "success") {
-                (pendingJson.rows||[]).forEach(r=>{
-                    if(r[3]){
-                        try { const rec=JSON.parse(r[3]); if(rec.id) pendingIds.add(rec.id); } catch{}
-                    }
-                });
-            }
-        } catch(e){}
-
-        // فقط رکوردهایی که توی Sheets اصلی یا هنوز pending هستن نگه دار
-        localLogs.forEach(l=>{ if(!existIds.has(l.id) && pendingIds.has(l.id)) STATE.logs.push(l); });
-        const stillLocal = localLogs.filter(l=>pendingIds.has(l.id) && !existIds.has(l.id));
-        localStorage.setItem("localLogs", JSON.stringify(stillLocal));
-
-        localActive.forEach(a=>{ if(!existActIds.has(a.id) && pendingIds.has(a.id)) STATE.active.push(a); });
-        const stillLocalAct = localActive.filter(a=>pendingIds.has(a.id) && !existActIds.has(a.id));
-        localStorage.setItem("localActive", JSON.stringify(stillLocalAct));
-
         STATE.loaded=true;
+
+        // فقط رکوردهای آفلاین که هنوز ارسال نشدن رو نشون بده
+        const q = STATE.offlineQueue;
+        if(q.length > 0){
+            q.forEach(item=>{
+                if(item.type==="logs") STATE.logs.push(item.record);
+                if(item.type==="active") STATE.active.push(item.record);
+            });
+        }
     } catch(e){
-        // آفلاین — از localStorage بخون
-        STATE.logs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
-        STATE.active = JSON.parse(localStorage.getItem("localActive") || "[]");
-        showToast("آفلاین — از حافظه محلی استفاده می‌شود","error");
+        // آفلاین — فقط از offlineQueue نمایش بده
+        STATE.logs   = STATE.offlineQueue.filter(i=>i.type==="logs").map(i=>i.record);
+        STATE.active = STATE.offlineQueue.filter(i=>i.type==="active").map(i=>i.record);
+        showToast("آفلاین — اطلاعات محلی نمایش داده می‌شود","error");
     }
     showLoading(false);
     updateEmpSelects();
@@ -164,12 +142,90 @@ async function flushOfflineQueue(){
 async function sendRecord(type, record){
     try {
         await addToPending(type, record);
+        // ارسال موفق — نیازی به offlineQueue نیست
     } catch(e){
         // آفلاین — به صف اضافه کن
         STATE.offlineQueue.push({type, record});
         saveOfflineQueue();
         showToast("آفلاین — رکورد در صف ذخیره شد","error");
     }
+}
+
+async function flushOfflineQueue(){
+    if(STATE.offlineQueue.length === 0) return;
+    showToast(`⏳ ${STATE.offlineQueue.length} رکورد آفلاین در حال ارسال...`);
+    const sent = [];
+    const failed = [];
+    for(const item of STATE.offlineQueue){
+        try {
+            await addToPending(item.type, item.record);
+            sent.push(item);
+        } catch(e) {
+            failed.push(item);
+        }
+    }
+    STATE.offlineQueue = failed;
+    saveOfflineQueue();
+
+    if(sent.length > 0){
+        _showOfflineSentDialog(sent, failed.length);
+    }
+}
+
+function _showOfflineSentDialog(sent, failedCount){
+    // ساخت modal
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,.7);
+        backdrop-filter:blur(4px);z-index:3000;
+        display:flex;align-items:flex-end;justify-content:center;
+    `;
+
+    const modal = document.createElement("div");
+    modal.style.cssText = `
+        background:var(--surface);border-radius:20px 20px 0 0;
+        padding:20px 20px 32px;width:100%;max-width:480px;
+        max-height:80dvh;overflow-y:auto;
+        animation:slideUp .3s ease;font-family:'Vazirmatn',sans-serif;
+        direction:rtl;
+    `;
+
+    let rows = "";
+    sent.forEach(item => {
+        const r = item.record;
+        if(item.type === "logs"){
+            const badge = r.type?.includes("غیبت")
+                ? `<span style="background:rgba(248,113,113,.2);color:#f87171;padding:2px 8px;border-radius:12px;font-size:11px">${r.type}</span>`
+                : `<span style="background:rgba(52,211,153,.2);color:#34d399;padding:2px 8px;border-radius:12px;font-size:11px">حضور</span>`;
+            rows += `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                <span style="color:var(--muted)">${r.date} — ${r.name}</span>${badge}
+            </div>`;
+        } else if(item.type === "active"){
+            rows += `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;align-items:center">
+                <span style="color:var(--muted)">${r.date} — ${r.name}</span>
+                <span style="background:rgba(99,102,241,.2);color:#818cf8;padding:2px 8px;border-radius:12px;font-size:11px">${parseInt(r.amount||0).toLocaleString()} تومان</span>
+            </div>`;
+        }
+    });
+
+    modal.innerHTML = `
+        <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px"></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">📤 رکوردهای آفلاین ارسال شدند</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+            ${sent.length} رکورد با موفقیت به سرور فرستاده شد
+            ${failedCount > 0 ? `<span style="color:var(--red)"> | ${failedCount} رکورد ناموفق</span>` : ''}
+        </div>
+        <div style="margin-bottom:16px">${rows}</div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="
+            width:100%;background:var(--accent);color:#fff;
+            border:none;border-radius:10px;padding:14px;
+            font-family:inherit;font-size:15px;font-weight:700;cursor:pointer
+        ">✅ تأیید</button>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e => { if(e.target===overlay) overlay.remove(); });
 }
 
 // ================================================================
@@ -226,8 +282,6 @@ async function registerAttendance(){
     const diff=Math.floor((now-target)/60000);
     const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
     STATE.logs.push(log);
-    // ذخیره محلی برای نمایش بعد از refresh
-    localStorage.setItem("localLogs", JSON.stringify(STATE.logs));
     renderAttReport();
     await sendRecord("logs", log);
     const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
@@ -244,7 +298,6 @@ async function registerAbsence(){
     const desc=document.getElementById("abs-desc").value.trim();
     const log={id:uid(),date:toJalali(),time:"--:--",name,minutes:0,shift,type:`غیبت: ${desc}`};
     STATE.logs.push(log);
-    localStorage.setItem("localLogs", JSON.stringify(STATE.logs));
     renderAttReport();
     document.getElementById("abs-desc").value="";
     await sendRecord("logs", log);
@@ -289,7 +342,6 @@ async function registerFinance(){
     if(!confirm(`ثبت مساعده ${formatNum(amount)} تومان برای ${name}؟`)) return;
     const rec={id:uid(),date:toJalali(),name,amount,desc};
     STATE.active.push(rec);
-    localStorage.setItem("localActive", JSON.stringify(STATE.active));
     document.getElementById("fin-amount").value="";
     document.getElementById("fin-desc").value="";
     renderFinance();
@@ -335,32 +387,11 @@ async function refreshFromServer(){
         STATE.debts     = data.debts     || [];
         STATE.config    = { ...STATE.config, ...data.config };
 
-        // چک کن کدوم رکوردهای محلی هنوز pending هستن
-        let pendingIds = new Set();
-        try {
-            const pendingRes  = await fetch(APPS_SCRIPT_PENDING_URL());
-            const pendingJson = await pendingRes.json();
-            if (pendingJson.status === "success") {
-                (pendingJson.rows||[]).forEach(r=>{
-                    if(r[3]){
-                        try { const rec=JSON.parse(r[3]); if(rec.id) pendingIds.add(rec.id); } catch{}
-                    }
-                });
-            }
-        } catch(e){}
-
-        const existIds    = new Set(STATE.logs.map(l=>l.id));
-        const existActIds = new Set(STATE.active.map(a=>a.id));
-
-        const localLogs   = JSON.parse(localStorage.getItem("localLogs")   || "[]");
-        const localActive = JSON.parse(localStorage.getItem("localActive") || "[]");
-
-        // فقط pending های تأیید نشده رو نگه دار
-        localLogs.forEach(l=>{ if(!existIds.has(l.id) && pendingIds.has(l.id)) STATE.logs.push(l); });
-        localStorage.setItem("localLogs", JSON.stringify(localLogs.filter(l=>pendingIds.has(l.id)&&!existIds.has(l.id))));
-
-        localActive.forEach(a=>{ if(!existActIds.has(a.id) && pendingIds.has(a.id)) STATE.active.push(a); });
-        localStorage.setItem("localActive", JSON.stringify(localActive.filter(a=>pendingIds.has(a.id)&&!existActIds.has(a.id))));
+        // اضافه کردن رکوردهای آفلاین که هنوز ارسال نشدن
+        STATE.offlineQueue.forEach(item=>{
+            if(item.type==="logs") STATE.logs.push(item.record);
+            if(item.type==="active") STATE.active.push(item.record);
+        });
 
         updateEmpSelects();
         renderAttReport();
