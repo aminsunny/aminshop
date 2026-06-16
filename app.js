@@ -119,25 +119,6 @@ function saveOfflineQueue(){
     localStorage.setItem("offlineQueue", JSON.stringify(STATE.offlineQueue));
 }
 
-async function flushOfflineQueue(){
-    if(STATE.offlineQueue.length === 0) return;
-    showToast(`⏳ ${STATE.offlineQueue.length} رکورد آفلاین در حال ارسال...`);
-    const failed = [];
-    for(const item of STATE.offlineQueue){
-        try {
-            await addToPending(item.type, item.record);
-        } catch(e) {
-            failed.push(item);
-        }
-    }
-    STATE.offlineQueue = failed;
-    saveOfflineQueue();
-    if(failed.length === 0){
-        showToast("✅ همه رکوردهای آفلاین ارسال شدند");
-    } else {
-        showToast(`⚠️ ${failed.length} رکورد هنوز ارسال نشد`,"error");
-    }
-}
 
 async function sendRecord(type, record){
     try {
