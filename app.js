@@ -242,7 +242,10 @@ function updateEmpSelects(){
 // ================================================================
 // ثبت ورود
 // ================================================================
+let _isSubmitting = false;
+
 async function registerAttendance(){
+    if(_isSubmitting) return;
     const name=document.getElementById("att-emp").value;
     if(!name) return showToast("کارمند انتخاب کنید","error");
     const h=nowHour();
@@ -258,15 +261,32 @@ async function registerAttendance(){
     } else {
         return showToast("خارج از ساعت کاری","error");
     }
-    const now=new Date(),target=new Date();
-    target.setHours(targetH,targetM,0,0);
-    const diff=Math.floor((now-target)/60000);
-    const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
-    STATE.logs.push(log);
-    renderAttReport();
-    await sendRecord("logs", log);
-    const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
-    showToast(`ورود ${name} ثبت شد — ${msg}`);
+
+    // جلوگیری از ثبت تکراری — همون کارمند، همون تاریخ، همون شیفت، نوع حضور
+    const today = toJalali();
+    const alreadyRegistered = STATE.logs.some(l =>
+        l.name === name && l.date === today && l.shift === shift && l.type === "حضور"
+    );
+    if(alreadyRegistered){
+        return showToast(`${name} امروز در شیفت ${shift} قبلاً ثبت ورود کرده`,"error");
+    }
+
+    _isSubmitting = true;
+    showLoading(true);
+    try {
+        const now=new Date(),target=new Date();
+        target.setHours(targetH,targetM,0,0);
+        const diff=Math.floor((now-target)/60000);
+        const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
+        STATE.logs.push(log);
+        renderAttReport();
+        await sendRecord("logs", log);
+        const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
+        showToast(`ورود ${name} ثبت شد — ${msg}`);
+    } finally {
+        _isSubmitting = false;
+        showLoading(false);
+    }
 }
 
 // ================================================================
