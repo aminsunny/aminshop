@@ -124,11 +124,21 @@ async function sendRecord(type, record){
     try {
         await addToPending(type, record);
         // ارسال موفق — نیازی به offlineQueue نیست
+        return { ok: true };
     } catch(e){
+        if(e.isDuplicate){
+            if(type === "logs") STATE.logs = STATE.logs.filter(l => l.id !== record.id);
+            if(type === "active") STATE.active = STATE.active.filter(a => a.id !== record.id);
+            renderAttReport();
+            renderFinance();
+            showErrorModal("ثبت تکراری", e.message);
+            return { ok: false, duplicate: true };
+        }
         // آفلاین — به صف اضافه کن
         STATE.offlineQueue.push({type, record});
         saveOfflineQueue();
         showToast("آفلاین — رکورد در صف ذخیره شد","error");
+        return { ok: false, offline: true };
     }
 }
 
@@ -213,6 +223,52 @@ function _showOfflineSentDialog(sent, failedCount){
 // UI helpers
 // ================================================================
 function showLoading(show){document.getElementById("loading-overlay").style.display=show?"flex":"none";}
+
+function showSuccessModal(title, message){
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,.7);
+        backdrop-filter:blur(4px);z-index:3000;
+        display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+    overlay.innerHTML = `
+        <div style="background:var(--surface);border-radius:20px;padding:32px 24px;
+             width:100%;max-width:340px;text-align:center;font-family:'Vazirmatn',sans-serif;direction:rtl">
+            <div style="font-size:56px;margin-bottom:16px">✅</div>
+            <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:10px">${title}</div>
+            <div style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7">${message}</div>
+            <button onclick="this.closest('div[style*=fixed]').remove()" style="
+                width:100%;background:var(--accent);color:#fff;
+                border:none;border-radius:12px;padding:14px;
+                font-family:inherit;font-size:15px;font-weight:700;cursor:pointer
+            ">✅ تأیید</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function showErrorModal(title, message){
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,.7);
+        backdrop-filter:blur(4px);z-index:3000;
+        display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+    overlay.innerHTML = `
+        <div style="background:var(--surface);border-radius:20px;padding:32px 24px;
+             width:100%;max-width:340px;text-align:center;font-family:'Vazirmatn',sans-serif;direction:rtl">
+            <div style="font-size:56px;margin-bottom:16px">⚠️</div>
+            <div style="font-size:18px;font-weight:700;color:var(--red);margin-bottom:10px">${title}</div>
+            <div style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7">${message}</div>
+            <button onclick="this.closest('div[style*=fixed]').remove()" style="
+                width:100%;background:rgba(248,113,113,.2);color:var(--red);
+                border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:14px;
+                font-family:inherit;font-size:15px;font-weight:700;cursor:pointer
+            ">باشه</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
 function showToast(msg,type="success"){
     const t=document.getElementById("toast");
     t.textContent=msg;t.className=`toast show ${type}`;
@@ -280,9 +336,13 @@ async function registerAttendance(){
         const log={id:uid(),date:toJalali(),time:nowTime(),name,minutes:diff,shift,type:"حضور"};
         STATE.logs.push(log);
         renderAttReport();
-        await sendRecord("logs", log);
-        const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
-        showToast(`ورود ${name} ثبت شد — ${msg}`);
+        const result = await sendRecord("logs", log);
+        if(result.ok){
+            const msg=diff>0?`تاخیر: ${diff} دقیقه`:diff<0?`${Math.abs(diff)} دقیقه زودتر`:"دقیقاً به موقع";
+            showSuccessModal(`ورود ${name} ثبت شد`, `📅 ${toJalali()} | 🕒 ${nowTime()}<br/>⏱ ${msg}`);
+        } else if(result.duplicate){
+            // پیام تکراری از sendRecord نشون داده شده
+        }
     } finally {
         _isSubmitting = false;
         showLoading(false);
@@ -301,8 +361,10 @@ async function registerAbsence(){
     STATE.logs.push(log);
     renderAttReport();
     document.getElementById("abs-desc").value="";
-    await sendRecord("logs", log);
-    showToast(`غیبت ${name} ثبت شد`);
+    const result = await sendRecord("logs", log);
+    if(result.ok){
+        showSuccessModal(`غیبت ${name} ثبت شد`, `📅 ${toJalali()} | شیفت ${shift}`);
+    }
 }
 
 // ================================================================
@@ -346,8 +408,10 @@ async function registerFinance(){
     document.getElementById("fin-amount").value="";
     document.getElementById("fin-desc").value="";
     renderFinance();
-    await sendRecord("active", rec);
-    showToast(`مساعده ${name} ثبت شد`);
+    const result = await sendRecord("active", rec);
+    if(result.ok){
+        showSuccessModal(`مساعده ${name} ثبت شد`, `📅 ${toJalali()}<br/>💰 ${formatNum(amount)} تومان`);
+    }
 }
 
 function renderFinance(){

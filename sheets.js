@@ -94,6 +94,11 @@ async function addToPending(type, record) {
         body: JSON.stringify(payload),
     });
     const json = await res.json();
+    if (json.status === "duplicate") {
+        const err = new Error(json.message || "این رکورد قبلاً ثبت شده است");
+        err.isDuplicate = true;
+        throw err;
+    }
     if (json.status !== "success") throw new Error("خطا در ذخیره رکورد");
 }
 
