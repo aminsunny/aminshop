@@ -353,17 +353,26 @@ async function registerAttendance(){
 // ثبت غیبت
 // ================================================================
 async function registerAbsence(){
+    if(_isSubmitting) return;
     const name=document.getElementById("att-emp-abs").value;
     if(!name) return showToast("کارمند انتخاب کنید","error");
     const shift=document.querySelector('input[name="abs-shift"]:checked')?.value||"صبح";
     const desc=document.getElementById("abs-desc").value.trim();
     const log={id:uid(),date:toJalali(),time:"--:--",name,minutes:0,shift,type:`غیبت: ${desc}`};
-    STATE.logs.push(log);
-    renderAttReport();
-    document.getElementById("abs-desc").value="";
-    const result = await sendRecord("logs", log);
-    if(result.ok){
-        showSuccessModal(`غیبت ${name} ثبت شد`, `📅 ${toJalali()} | شیفت ${shift}`);
+
+    _isSubmitting = true;
+    showLoading(true);
+    try {
+        STATE.logs.push(log);
+        renderAttReport();
+        document.getElementById("abs-desc").value="";
+        const result = await sendRecord("logs", log);
+        if(result.ok){
+            showSuccessModal(`غیبت ${name} ثبت شد`, `📅 ${toJalali()} | شیفت ${shift}`);
+        }
+    } finally {
+        _isSubmitting = false;
+        showLoading(false);
     }
 }
 
@@ -397,20 +406,29 @@ function renderAttReport(){
 // ثبت مساعده
 // ================================================================
 async function registerFinance(){
+    if(_isSubmitting) return;
     const name=document.getElementById("fin-emp").value;
     const amount=parseInt(document.getElementById("fin-amount").value.replace(/,/g,""))||0;
     const desc=document.getElementById("fin-desc").value.trim();
     if(!name) return showToast("کارمند انتخاب کنید","error");
     if(!amount) return showToast("مبلغ را وارد کنید","error");
     if(!confirm(`ثبت مساعده ${formatNum(amount)} تومان برای ${name}؟`)) return;
-    const rec={id:uid(),date:toJalali(),name,amount,desc};
-    STATE.active.push(rec);
-    document.getElementById("fin-amount").value="";
-    document.getElementById("fin-desc").value="";
-    renderFinance();
-    const result = await sendRecord("active", rec);
-    if(result.ok){
-        showSuccessModal(`مساعده ${name} ثبت شد`, `📅 ${toJalali()}<br/>💰 ${formatNum(amount)} تومان`);
+
+    _isSubmitting = true;
+    showLoading(true);
+    try {
+        const rec={id:uid(),date:toJalali(),name,amount,desc};
+        STATE.active.push(rec);
+        document.getElementById("fin-amount").value="";
+        document.getElementById("fin-desc").value="";
+        renderFinance();
+        const result = await sendRecord("active", rec);
+        if(result.ok){
+            showSuccessModal(`مساعده ${name} ثبت شد`, `📅 ${toJalali()}<br/>💰 ${formatNum(amount)} تومان`);
+        }
+    } finally {
+        _isSubmitting = false;
+        showLoading(false);
     }
 }
 
