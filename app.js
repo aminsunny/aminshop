@@ -408,7 +408,7 @@ function renderAttReport(){
 async function registerFinance(){
     if(_isSubmitting) return;
     const name=document.getElementById("fin-emp").value;
-    const amount=parseInt(document.getElementById("fin-amount").value.replace(/,/g,""))||0;
+    const amount=getInputValue(document.getElementById("fin-amount"));
     const desc=document.getElementById("fin-desc").value.trim();
     if(!name) return showToast("کارمند انتخاب کنید","error");
     if(!amount) return showToast("مبلغ را وارد کنید","error");
@@ -453,8 +453,27 @@ function renderFinance(){
 }
 
 function formatInput(el){
-    const v=el.value.replace(/,/g,"");
-    if(/^\d+$/.test(v)) el.value=parseInt(v).toLocaleString();
+    // تبدیل اعداد فارسی به انگلیسی
+    let v = el.value
+        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+        .replace(/,/g, "")
+        .replace(/[^0-9]/g, "");
+    if(v){
+        // نمایش با جداکننده سه‌رقمی فارسی
+        el.value = parseInt(v).toLocaleString('fa-IR');
+    }
+}
+
+function getInputValue(el){
+    // تبدیل مقدار فیلد به عدد خالص برای محاسبه
+    return parseInt(el.value
+        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+        .replace(/,/g, "")
+        .replace(/،/g, "")
+        .replace(/[^0-9]/g, "")
+    ) || 0;
 }
 
 // ================================================================
