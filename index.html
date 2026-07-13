@@ -161,7 +161,21 @@ tr.debt-row td{color:var(--red);}
     </div>
 </div>
 
-<!-- صفحه ۳ — تنظیمات -->
+<!-- صفحه ۴ — بایگانی -->
+<div class="page" id="page-archive">
+    <div class="card">
+        <div class="card-title">🗄 بایگانی تسویه‌ها</div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px">روی هر ردیف کلیک کنید تا جزئیات ببینید</p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>تاریخ</th><th>نام</th><th>جمع کل</th><th>وضعیت</th></tr></thead>
+                <tbody id="arc-tbody"><tr><td colspan="4" class="empty">در حال بارگذاری...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- صفحه ۵ — تنظیمات -->
 <div class="page" id="page-settings">
     <div class="card">
         <div class="card-title">🔄 به‌روزرسانی از سرور</div>
@@ -180,6 +194,7 @@ tr.debt-row td{color:var(--red);}
 <nav id="bottom-nav" style="display:flex">
     <button class="nav-btn active" data-page="attendance" onclick="renderPage('attendance')"><span class="icon">🕒</span>حضور</button>
     <button class="nav-btn" data-page="finance" onclick="renderPage('finance')"><span class="icon">💸</span>مالی</button>
+    <button class="nav-btn" data-page="archive" onclick="renderPage('archive')"><span class="icon">🗄</span>بایگانی</button>
     <button class="nav-btn" data-page="settings" onclick="renderPage('settings')"><span class="icon">🔐</span>رمز</button>
 </nav>
 

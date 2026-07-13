@@ -12,9 +12,9 @@ let STATE = {
     logs: [],
     active: [],
     debts: [],
+    archive: [],
     config: { entry_pass: btoa("1234") },
     loaded: false,
-    // صف آفلاین
     offlineQueue: JSON.parse(localStorage.getItem("offlineQueue") || "[]"),
 };
 
@@ -89,6 +89,7 @@ async function init(){
         STATE.logs=data.logs||[];
         STATE.active=data.active||[];
         STATE.debts=data.debts||[];
+        STATE.archive=data.archive||[];
         STATE.config={...STATE.config,...data.config};
         STATE.loaded=true;
 
@@ -281,6 +282,7 @@ function renderPage(page){
     document.querySelector(`[data-page="${page}"]`)?.classList.add("active");
     if(page==="attendance") renderAttReport();
     if(page==="finance") renderFinance();
+    if(page==="archive") renderArchiveMobile();
 }
 function updateEmpSelects(){
     const emps=STATE.employees;
@@ -438,11 +440,13 @@ function renderFinance(){
     const debtTbody=document.getElementById("fin-debt-tbody");
     if(!tbody) return;
     let total=0,totalDebt=0,rows="",debtRows="";
-    STATE.active.filter(a=>filt==="همه"||a.name===filt).forEach(a=>{
+
+    // معکوس برای نمایش آخرین ورودی اول
+    [...STATE.active].reverse().filter(a=>filt==="همه"||a.name===filt).forEach(a=>{
         total+=a.amount;
         rows+=`<tr><td>${a.date}</td><td>${a.name}</td><td>${formatNum(a.amount)}</td><td>${a.desc||"-"}</td></tr>`;
     });
-    STATE.debts.filter(d=>filt==="همه"||d.name===filt).forEach(d=>{
+    [...STATE.debts].reverse().filter(d=>filt==="همه"||d.name===filt).forEach(d=>{
         totalDebt+=d.amount;
         debtRows+=`<tr class="debt-row"><td>${d.date}</td><td>${d.name}</td><td>${formatNum(d.amount)}</td><td>${d.desc||"-"}</td></tr>`;
     });
@@ -450,6 +454,56 @@ function renderFinance(){
     if(debtTbody) debtTbody.innerHTML=debtRows||`<tr><td colspan="4" class="empty">بدهی انتقالی ندارد</td></tr>`;
     const summary=document.getElementById("fin-summary");
     if(summary) summary.innerHTML=`مساعده: <b>${formatNum(total)}</b> | بدهی: <b style="color:var(--red)">${formatNum(totalDebt)}</b> | جمع: <b style="color:var(--accent2)">${formatNum(total+totalDebt)}</b> تومان`;
+}
+
+function renderArchiveMobile(){
+    const tbody=document.getElementById("arc-tbody");
+    if(!tbody) return;
+    let rows="";
+    [...STATE.archive].reverse().forEach(r=>{
+        const debt=r.debt_carried_out>0
+            ?`<span style="color:var(--red)">${formatNum(r.debt_carried_out)}</span>`
+            :`<span style="color:var(--green)">کامل</span>`;
+        rows+=`<tr onclick="showArchiveDetailMobile('${r.id}')" style="cursor:pointer">
+            <td>${r.settle_date}</td>
+            <td>${r.name}</td>
+            <td>${formatNum(r.total_amount)}</td>
+            <td>${debt}</td>
+        </tr>`;
+    });
+    tbody.innerHTML=rows||`<tr><td colspan="4" class="empty">بایگانی خالی است</td></tr>`;
+}
+
+function showArchiveDetailMobile(id){
+    const rec=STATE.archive.find(r=>r.id===id);
+    if(!rec) return;
+    const overlay=document.createElement("div");
+    overlay.style.cssText=`position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:3000;display:flex;align-items:flex-end;justify-content:center;`;
+    let details="";
+    (rec.details||[]).forEach((d,i)=>{
+        details+=`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between">
+            <span style="color:var(--muted)">${d.date} — ${d.desc||"-"}</span>
+            <span>${formatNum(d.amount)} تومان</span>
+        </div>`;
+    });
+    overlay.innerHTML=`
+        <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px 32px;width:100%;max-width:480px;max-height:80dvh;overflow-y:auto;font-family:'Vazirmatn',sans-serif;direction:rtl">
+            <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px"></div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px">🗄 تسویه ${rec.name}</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:4px">📅 تاریخ تسویه: ${rec.settle_date}</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:4px">💵 حقوق: ${formatNum(rec.salary)} تومان</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:4px">💸 جمع برداشت: ${formatNum(rec.total_amount)} تومان</div>
+            <div style="font-size:13px;margin-bottom:12px;${rec.debt_carried_out>0?'color:var(--red)':'color:var(--green)'}">
+                ${rec.debt_carried_out>0?`⚠️ بدهی انتقالی: ${formatNum(rec.debt_carried_out)} تومان`:'✅ تسویه کامل'}
+            </div>
+            <hr style="border-color:var(--border);margin-bottom:12px"/>
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">ریز تراکنش‌ها:</div>
+            ${details}
+            <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px">بستن</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove();});
 }
 
 function formatInput(el){
@@ -528,15 +582,13 @@ async function refreshFromSheets(){
         STATE.logs=data.logs||[];
         STATE.active=data.active||[];
         STATE.debts=data.debts||[];
+        STATE.archive=data.archive||[];
         STATE.config={...STATE.config,...data.config};
-
-        // پاک کردن localStorage — چون الان مستقیم از Sheets خوندیم
-        localStorage.removeItem("localLogs");
-        localStorage.removeItem("localActive");
 
         updateEmpSelects();
         renderAttReport();
         renderFinance();
+        renderArchiveMobile();
         showToast("✅ اطلاعات بروزرسانی شد");
     } catch(e){
         showToast("خطا در اتصال به سرور","error");
@@ -562,6 +614,8 @@ window.registerAbsence=registerAbsence;
 window.renderAttReport=renderAttReport;
 window.registerFinance=registerFinance;
 window.renderFinance=renderFinance;
+window.renderArchiveMobile=renderArchiveMobile;
+window.showArchiveDetailMobile=showArchiveDetailMobile;
 window.formatInput=formatInput;
 window.changeEntryPassword=changeEntryPassword;
 window.refreshFromServer=refreshFromServer;
